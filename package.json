@@ -1,0 +1,48 @@
+{
+  "name": "mcp-news-server",
+  "version": "0.1.0",
+  "description": "MCP tabanlı haber özetleme ve öğrenme sistemi",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "start:web": "node dist/web-server.js",
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "dev:web": "tsx watch src/web-server.ts",
+    "test": "jest",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "news",
+    "summarization",
+    "nlp",
+    "turkish"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "axios": "^1.7.9",
+    "cheerio": "^1.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "natural": "^8.0.1",
+    "node-cache": "^5.1.2",
+    "rss-parser": "^3.13.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/jest": "^29.5.14",
+    "@types/natural": "^5.1.5",
+    "@types/node": "^22.10.2",
+    "jest": "^29.7.0",
+    "rimraf": "^6.0.1",
+    "ts-jest": "^29.2.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
