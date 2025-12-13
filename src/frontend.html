@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="tr">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>MCP Haber Sistemi</title>
+		<link rel="stylesheet" href="styles.css" />
+	</head>
+	<body>
+		<div class="container">
+			<header class="header">
+				<h1>MCP Haber Sistemi</h1>
+				<p>Model Context Protocol ile Haber Analizi</p>
+			</header>
+
+			<div class="main-grid">
+				<section class="card">
+					<h2>Haberler</h2>
+					<div class="filter-controls">
+						<input type="text" id="searchKeyword" placeholder="Anahtar kelime..." onkeypress="if(event.key==='Enter')fetchNews()" />
+						<button class="btn" onclick="fetchNews()">Ara</button>
+					</div>
+					<div class="loading" id="newsLoading">
+						<div class="spinner"></div>
+						<p>Yükleniyor...</p>
+					</div>
+					<div class="news-list" id="newsList"></div>
+				</section>
+
+				<section class="card">
+					<h2>Metin Özetleme</h2>
+					<textarea id="textToSummarize" placeholder="Özetlenecek metni girin veya bir habere tıklayın..."></textarea>
+					<button class="btn" onclick="summarizeText()">Özetle</button>
+					<div class="loading" id="summaryLoading">
+						<div class="spinner"></div>
+						<p>Özetleniyor...</p>
+					</div>
+					<div id="summaryResult"></div>
+				</section>
+			</div>
+
+			<section class="card">
+				<h2>Trend Analizi</h2>
+				<button class="btn" onclick="analyzeTrends()">Analiz Et</button>
+				<div class="loading" id="trendsLoading">
+					<div class="spinner"></div>
+					<p>Analiz ediliyor...</p>
+				</div>
+				<div id="trendsResult"></div>
+			</section>
+
+			<footer class="footer">
+				MCP News Server
+			</footer>
+		</div>
+
+		<script>
+			const API_URL = 'http://localhost:3000/api'
+
+			async function fetchNews() {
+				const keyword = document.getElementById('searchKeyword').value
+				const loading = document.getElementById('newsLoading')
+				const newsList = document.getElementById('newsList')
+
+				loading.classList.add('active')
+				newsList.innerHTML = ''
+
+				try {
+					const params = new URLSearchParams({ limit: '10' })
+					if (keyword) params.append('keyword', keyword)
+
+					const response = await fetch(`${API_URL}/news?${params}`)
+					const data = await response.json()
+
+					if (data.success) {
+						displayNews(data.data)
+					} else {
+						newsList.innerHTML = `<div class="error">${data.error}</div>`
+					}
+				} catch (error) {
+					newsList.innerHTML = `<div class="error">Bağlantı hatası</div>`
+				} finally {
+					loading.classList.remove('active')
+				}
+			}
+
+			function displayNews(news) {
+				const newsList = document.getElementById('newsList')
+
+				if (!news.length) {
+					newsList.innerHTML = '<div class="empty-state">Haber bulunamadı</div>'
+					return
+				}
+
+				newsList.innerHTML = news.map(item => `
+					<div class="news-item" onclick="selectNews('${encodeURIComponent(JSON.stringify(item))}')">
+						<h3>${esc(item.title)}</h3>
+						<div class="meta">
+							<span>${formatDate(item.pubDate)}</span>
+							<span>${esc(item.source)}</span>
+						</div>
+					</div>
+				`).join('')
+			}
+
+			function selectNews(encoded) {
+				const item = JSON.parse(decodeURIComponent(encoded))
+				const ta = document.getElementById('textToSummarize')
+				ta.value = `${item.title}\n\n${item.description || item.content || ''}`
+
+				// Metin özetleme kartına scroll yap
+				const card = ta.closest('.card')
+				if (card) {
+					card.scrollIntoView({ behavior: 'smooth', block: 'start' })
+				}
+
+				// Kısa bir gecikme ile focus ver (scroll tamamlandıktan sonra)
+				setTimeout(() => {
+					ta.focus()
+					ta.setSelectionRange(0, 0)
+				}, 300)
+			}
+
+			async function summarizeText() {
+				const text = document.getElementById('textToSummarize').value
+				const loading = document.getElementById('summaryLoading')
+				const result = document.getElementById('summaryResult')
+
+				if (!text.trim()) {
+					result.innerHTML = '<div class="error">Metin girin</div>'
+					return
+				}
+
+				loading.classList.add('active')
+				result.innerHTML = ''
+
+				try {
+					const response = await fetch(`${API_URL}/summarize`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ text, sentenceCount: 3 })
+					})
+					const data = await response.json()
+
+					if (data.success) {
+						displaySummary(data.data)
+					} else {
+						result.innerHTML = `<div class="error">${data.error}</div>`
+					}
+				} catch (error) {
+					result.innerHTML = '<div class="error">Bağlantı hatası</div>'
+				} finally {
+					loading.classList.remove('active')
+				}
+			}
+
+			function displaySummary(data) {
+				document.getElementById('summaryResult').innerHTML = `
+					<div class="summary-result">
+						<h4>Özet</h4>
+						<p>${esc(data.summary)}</p>
+						${data.keywords?.length ? `
+							<h4 style="margin-top:12px">Anahtar Kelimeler</h4>
+							<div class="keywords">${data.keywords.map(k => `<span class="keyword">${esc(k)}</span>`).join('')}</div>
+						` : ''}
+						<div class="stats">
+							<div class="stat">
+								<div class="stat-value">${data.sentenceCount}</div>
+								<div class="stat-label">Cümle</div>
+							</div>
+							<div class="stat">
+								<div class="stat-value">${data.reductionRatio.toFixed(0)}%</div>
+								<div class="stat-label">Sıkıştırma</div>
+							</div>
+						</div>
+					</div>
+				`
+			}
+
+			async function analyzeTrends() {
+				const loading = document.getElementById('trendsLoading')
+				const result = document.getElementById('trendsResult')
+
+				loading.classList.add('active')
+				result.innerHTML = ''
+
+				try {
+					const response = await fetch(`${API_URL}/trends`)
+					const data = await response.json()
+
+					if (data.success) {
+						displayTrends(data.data)
+					} else {
+						result.innerHTML = `<div class="error">${data.error}</div>`
+					}
+				} catch (error) {
+					result.innerHTML = '<div class="error">Bağlantı hatası</div>'
+				} finally {
+					loading.classList.remove('active')
+				}
+			}
+
+			function displayTrends(data) {
+				document.getElementById('trendsResult').innerHTML = `
+					<div class="stats">
+						<div class="stat">
+							<div class="stat-value">${data.newsCount}</div>
+							<div class="stat-label">Haber</div>
+						</div>
+						<div class="stat">
+							<div class="stat-value">${esc(data.period)}</div>
+							<div class="stat-label">Dönem</div>
+						</div>
+					</div>
+					${data.keywords?.length ? `
+						<div style="margin-top:16px">
+							<div class="keywords">${data.keywords.map(k => `<span class="keyword">${esc(k)}</span>`).join('')}</div>
+						</div>
+					` : ''}
+					${data.latestNews?.length ? `
+						<div style="margin-top:16px">
+							${data.latestNews.map(n => `
+								<div class="news-item" style="cursor:default">
+									<h3>${esc(n.title)}</h3>
+									<div class="meta">
+										<span>${formatDate(n.date)}</span>
+										<span>${esc(n.source)}</span>
+									</div>
+								</div>
+							`).join('')}
+						</div>
+					` : ''}
+				`
+			}
+
+			function esc(t) {
+				if (!t) return ''
+				const d = document.createElement('div')
+				d.textContent = t
+				return d.innerHTML
+			}
+
+			function formatDate(d) {
+				if (!d) return ''
+				try {
+					return new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })
+				} catch { return '' }
+			}
+
+			window.onload = fetchNews
+		</script>
+	</body>
+</html>
