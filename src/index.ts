@@ -4,7 +4,9 @@ import {
 	CallToolRequestSchema,
 	ListResourcesRequestSchema,
 	ListToolsRequestSchema,
-	ReadResourceRequestSchema
+	ReadResourceRequestSchema,
+	ListPromptsRequestSchema,
+	GetPromptRequestSchema
 } from '@modelcontextprotocol/sdk/types.js'
 import { NewsService } from './services/newsService.js'
 import { SummaryService } from './services/summaryService.js'
@@ -29,7 +31,8 @@ const server = new Server(
 	{
 		capabilities: {
 			tools: {},
-			resources: {}
+			resources: {},
+			prompts: {}
 		}
 	}
 )
@@ -203,6 +206,230 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 
 		default:
 			throw new Error(`Bilinmeyen resource: ${uri}`)
+	}
+})
+
+// Prompt tanımlamaları
+server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+	prompts: [
+		{
+			name: 'daily_news_summary',
+			description: 'Günlük haber özeti oluşturur. Tüm kaynaklardan haberleri çeker ve kapsamlı bir özet sunar.',
+			arguments: [
+				{
+					name: 'category',
+					description: 'Haber kategorisi (opsiyonel, örn: ekonomi, spor, teknoloji)',
+					required: false
+				},
+				{
+					name: 'maxNews',
+					description: 'Özete dahil edilecek maksimum haber sayısı (varsayılan: 10)',
+					required: false
+				}
+			]
+		},
+		{
+			name: 'topic_analysis',
+			description: 'Belirli bir konu hakkında haberleri analiz eder ve detaylı bir rapor oluşturur.',
+			arguments: [
+				{
+					name: 'topic',
+					description: 'Analiz edilecek konu (zorunlu, örn: seçim, deprem, enflasyon)',
+					required: true
+				},
+				{
+					name: 'depth',
+					description: 'Analiz derinliği: kısa, orta, detaylı (varsayılan: orta)',
+					required: false
+				}
+			]
+		},
+		{
+			name: 'news_comparison',
+			description: 'Farklı haber kaynaklarının aynı konuyu nasıl ele aldığını karşılaştırır.',
+			arguments: [
+				{
+					name: 'topic',
+					description: 'Karşılaştırılacak konu (zorunlu)',
+					required: true
+				}
+			]
+		},
+		{
+			name: 'weekly_briefing',
+			description: 'Haftalık haber brifing raporu oluşturur. Öne çıkan haberler, trendler ve anahtar kelimeler içerir.',
+			arguments: [
+				{
+					name: 'focusAreas',
+					description: 'Odaklanılacak alanlar (opsiyonel, virgülle ayrılmış: ekonomi,siyaset,teknoloji)',
+					required: false
+				}
+			]
+		}
+	]
+}))
+
+// Prompt getirme handler'ı
+server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+	const { name, arguments: args } = request.params
+
+	switch (name) {
+		case 'daily_news_summary': {
+			const category = args?.category || ''
+			const maxNews = args?.maxNews || '10'
+			return {
+				description: 'Günlük haber özeti',
+				messages: [
+					{
+						role: 'user',
+						content: {
+							type: 'text',
+							text: `Lütfen güncel Türkçe haberleri analiz et ve kapsamlı bir günlük özet oluştur.
+
+${category ? `Kategori: ${category}` : 'Tüm kategorilerden haberler'}
+Maksimum haber sayısı: ${maxNews}
+
+Şu adımları izle:
+1. Önce fetch_news aracını kullanarak ${category ? `"${category}" kategorisindeki` : ''} güncel haberleri çek
+2. Her haberin başlığını ve içeriğini analiz et
+3. summarize_news aracını kullanarak önemli haberleri özetle
+4. analyze_trends aracını kullanarak günün trendlerini belirle
+
+Çıktı formatı:
+- Günün Öne Çıkan Haberleri (en önemli 3-5 haber)
+- Kategori Bazlı Özet
+- Günün Anahtar Kelimeleri
+- Genel Değerlendirme`
+						}
+					}
+				]
+			}
+		}
+
+		case 'topic_analysis': {
+			const topic = args?.topic
+			if (!topic) {
+				throw new Error('topic parametresi zorunludur')
+			}
+			const depth = args?.depth || 'orta'
+
+			const depthInstructions = {
+				kısa: '2-3 cümlelik kısa bir özet',
+				orta: 'orta detayda bir analiz (5-7 cümle)',
+				detaylı: 'kapsamlı ve detaylı bir analiz (10+ cümle, farklı perspektifler dahil)'
+			}
+
+			return {
+				description: `"${topic}" konusu hakkında haber analizi`,
+				messages: [
+					{
+						role: 'user',
+						content: {
+							type: 'text',
+							text: `"${topic}" konusu hakkında Türkçe haberleri analiz et.
+
+Analiz derinliği: ${depth} - ${depthInstructions[depth as keyof typeof depthInstructions] || depthInstructions.orta}
+
+Şu adımları izle:
+1. fetch_news aracını kullanarak "${topic}" anahtar kelimesiyle haberleri ara
+2. Bulunan haberlerin tam içeriğini get_full_content ile çek
+3. summarize_news ile her haberi özetle
+4. Tüm bilgileri sentezleyerek kapsamlı bir analiz oluştur
+
+Çıktı formatı:
+- Konu Özeti
+- Farklı Kaynakların Yaklaşımları
+- Kronolojik Gelişim (varsa)
+- Anahtar Noktalar
+- Sonuç ve Değerlendirme`
+						}
+					}
+				]
+			}
+		}
+
+		case 'news_comparison': {
+			const topic = args?.topic
+			if (!topic) {
+				throw new Error('topic parametresi zorunludur')
+			}
+
+			return {
+				description: `"${topic}" konusunda kaynak karşılaştırması`,
+				messages: [
+					{
+						role: 'user',
+						content: {
+							type: 'text',
+							text: `"${topic}" konusunu farklı haber kaynaklarının nasıl ele aldığını karşılaştır.
+
+Kaynaklar: BBC Türkçe, Ensonhaber, Milliyet, BloombergHT
+
+Şu adımları izle:
+1. fetch_news aracını kullanarak "${topic}" ile ilgili haberleri tüm kaynaklardan çek
+2. Her kaynaktan gelen haberleri ayrı ayrı analiz et
+3. Kaynaklar arasındaki benzerlik ve farklılıkları belirle
+
+Çıktı formatı:
+- Kaynak Bazlı Özetler:
+  * BBC Türkçe: [özet ve ton]
+  * Ensonhaber: [özet ve ton]
+  * Milliyet: [özet ve ton]
+  * BloombergHT: [özet ve ton]
+- Ortak Noktalar
+- Farklı Yaklaşımlar
+- Kaynak Güvenilirlik Değerlendirmesi
+- Genel Sentez`
+						}
+					}
+				]
+			}
+		}
+
+		case 'weekly_briefing': {
+			const focusAreas = args?.focusAreas || ''
+
+			return {
+				description: 'Haftalık haber brifing raporu',
+				messages: [
+					{
+						role: 'user',
+						content: {
+							type: 'text',
+							text: `Haftalık haber brifing raporu oluştur.
+
+${focusAreas ? `Odak alanları: ${focusAreas}` : 'Tüm kategoriler dahil'}
+
+Şu adımları izle:
+1. fetch_news aracını kullanarak son haberleri çek
+2. analyze_trends aracını kullanarak son 168 saatteki (7 gün) trendleri analiz et
+3. Öne çıkan haberleri summarize_news ile özetle
+
+Çıktı formatı:
+## Haftalık Haber Brifing Raporu
+
+### Haftanın Öne Çıkan Gelişmeleri
+[En önemli 5-7 haber]
+
+### Trend Analizi
+[Haftanın en çok konuşulan konuları]
+
+### Kategori Bazlı Özet
+${focusAreas ? focusAreas.split(',').map((area: string) => `- ${area.trim()}: [özet]`).join('\n') : '- Ekonomi:\n- Siyaset:\n- Teknoloji:\n- Dünya:'}
+
+### Anahtar Kelimeler ve İstatistikler
+[Haftanın anahtar kelimeleri ve haber sayıları]
+
+### Önümüzdeki Hafta Beklentileri
+[Takip edilmesi gereken konular]`
+						}
+					}
+				]
+			}
+		}
+
+		default:
+			throw new Error(`Bilinmeyen prompt: ${name}`)
 	}
 })
 
