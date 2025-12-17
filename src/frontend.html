@@ -13,18 +13,45 @@
 				<p>Model Context Protocol ile Haber Analizi</p>
 			</header>
 
+			<!-- Tabs -->
+			<div class="tabs">
+				<button class="tab active" onclick="switchTab('news')">Haberler</button>
+				<button class="tab" onclick="switchTab('favorites')">Favoriler <span class="fav-count" id="favCount">0</span></button>
+			</div>
+
 			<div class="main-grid">
-				<section class="card">
+				<section class="card" id="newsCard">
 					<h2>Haberler</h2>
 					<div class="filter-controls">
 						<input type="text" id="searchKeyword" placeholder="Anahtar kelime..." onkeypress="if(event.key==='Enter')fetchNews()" />
 						<button class="btn" onclick="fetchNews()">Ara</button>
+					</div>
+					<div class="filter-row">
+						<select id="categoryFilter" onchange="fetchNews()">
+							<option value="">Tüm Kategoriler</option>
+							<option value="genel">Genel</option>
+							<option value="teknoloji">Teknoloji</option>
+							<option value="ekonomi">Ekonomi</option>
+							<option value="spor">Spor</option>
+							<option value="sağlık">Sağlık</option>
+							<option value="bilim">Bilim</option>
+							<option value="dünya">Dünya</option>
+						</select>
+						<select id="sourceFilter" onchange="fetchNews()">
+							<option value="">Tüm Kaynaklar</option>
+						</select>
 					</div>
 					<div class="loading" id="newsLoading">
 						<div class="spinner"></div>
 						<p>Yükleniyor...</p>
 					</div>
 					<div class="news-list" id="newsList"></div>
+				</section>
+
+				<!-- Favoriler Card (gizli başlar) -->
+				<section class="card hidden" id="favoritesCard">
+					<h2>Favori Haberler</h2>
+					<div class="news-list" id="favoritesList"></div>
 				</section>
 
 				<section class="card">
@@ -54,11 +81,136 @@
 			</footer>
 		</div>
 
+		<!-- Haber Detay Modal -->
+		<div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+			<div class="modal" onclick="event.stopPropagation()">
+				<button class="modal-close" onclick="closeModal()">&times;</button>
+				<div class="modal-content" id="modalContent"></div>
+			</div>
+		</div>
+
 		<script>
 			const API_URL = 'http://localhost:3000/api'
+			const FAVORITES_KEY = 'mcp_news_favorites'
+			let allSources = new Set()
+			let newsCache = new Map() // Haberleri cache'le
+
+			// Haber cache yönetimi
+			function cacheNews(item) {
+				newsCache.set(item.id, item)
+			}
+
+			function getNewsById(id) {
+				return newsCache.get(id) || getFavorites().find(f => f.id === id)
+			}
+
+			// Favoriler yönetimi
+			function getFavorites() {
+				try {
+					return JSON.parse(localStorage.getItem(FAVORITES_KEY)) || []
+				} catch { return [] }
+			}
+
+			function saveFavorites(favorites) {
+				localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites))
+				updateFavCount()
+			}
+
+			function isFavorite(id) {
+				return getFavorites().some(f => f.id === id)
+			}
+
+			function toggleFavorite(id, event) {
+				if (event) event.stopPropagation()
+				const item = getNewsById(id)
+				if (!item) return
+
+				let favorites = getFavorites()
+
+				if (isFavorite(id)) {
+					favorites = favorites.filter(f => f.id !== id)
+				} else {
+					favorites.push(item)
+				}
+
+				saveFavorites(favorites)
+				displayNews(Array.from(newsCache.values())) // Listeyi güncelle
+				displayFavorites() // Favorileri güncelle
+
+				// Modal açıksa içeriğini güncelle
+				if (document.getElementById('modalOverlay').classList.contains('active')) {
+					openModal(id)
+				}
+			}
+
+			function updateFavCount() {
+				document.getElementById('favCount').textContent = getFavorites().length
+			}
+
+			function displayFavorites() {
+				const list = document.getElementById('favoritesList')
+				const favorites = getFavorites()
+
+				if (!favorites.length) {
+					list.innerHTML = '<div class="empty-state">Henüz favori haber eklemediniz</div>'
+					return
+				}
+
+				list.innerHTML = favorites.map(item => {
+					cacheNews(item) // Favorileri de cache'e ekle
+					return `
+					<div class="news-item" onclick="openModal('${item.id}')">
+						<div class="news-item-header">
+							<h3>${esc(item.title)}</h3>
+							<button class="fav-btn active" onclick="toggleFavorite('${item.id}', event)" title="Favorilerden çıkar">
+								★
+							</button>
+						</div>
+						<div class="meta">
+							<span>${formatDate(item.pubDate)}</span>
+							<span>${esc(item.source)}</span>
+						</div>
+					</div>
+				`}).join('')
+			}
+
+			// Tab değiştirme
+			function switchTab(tab) {
+				document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+				event.target.classList.add('active')
+
+				const newsCard = document.getElementById('newsCard')
+				const favCard = document.getElementById('favoritesCard')
+
+				if (tab === 'favorites') {
+					newsCard.classList.add('hidden')
+					favCard.classList.remove('hidden')
+					displayFavorites()
+				} else {
+					newsCard.classList.remove('hidden')
+					favCard.classList.add('hidden')
+				}
+			}
+
+			// Kaynak filtresini güncelle
+			function updateSourceFilter(news) {
+				news.forEach(item => {
+					if (item.source) allSources.add(item.source)
+				})
+
+				const select = document.getElementById('sourceFilter')
+				const currentValue = select.value
+
+				select.innerHTML = '<option value="">Tüm Kaynaklar</option>' +
+					Array.from(allSources).sort().map(s =>
+						`<option value="${esc(s)}" ${s === currentValue ? 'selected' : ''}>${esc(s)}</option>`
+					).join('')
+			}
 
 			async function fetchNews() {
 				const keyword = document.getElementById('searchKeyword').value
+				const category = document.getElementById('categoryFilter').value
+				const source = document.getElementById('sourceFilter').value
 				const loading = document.getElementById('newsLoading')
 				const newsList = document.getElementById('newsList')
 
@@ -66,14 +218,20 @@
 				newsList.innerHTML = ''
 
 				try {
-					const params = new URLSearchParams({ limit: '10' })
+					const params = new URLSearchParams({ limit: '20' })
 					if (keyword) params.append('keyword', keyword)
+					if (category) params.append('category', category)
 
 					const response = await fetch(`${API_URL}/news?${params}`)
 					const data = await response.json()
 
 					if (data.success) {
-						displayNews(data.data)
+						updateSourceFilter(data.data)
+						let filtered = data.data
+						if (source) {
+							filtered = filtered.filter(item => item.source === source)
+						}
+						displayNews(filtered)
 					} else {
 						newsList.innerHTML = `<div class="error">${data.error}</div>`
 					}
@@ -92,34 +250,80 @@
 					return
 				}
 
-				newsList.innerHTML = news.map(item => `
-					<div class="news-item" onclick="selectNews('${encodeURIComponent(JSON.stringify(item))}')">
-						<h3>${esc(item.title)}</h3>
+				newsList.innerHTML = news.map(item => {
+					cacheNews(item) // Her haberi cache'e ekle
+					return `
+					<div class="news-item" onclick="openModal('${item.id}')">
+						<div class="news-item-header">
+							<h3>${esc(item.title)}</h3>
+							<button class="fav-btn ${isFavorite(item.id) ? 'active' : ''}" onclick="toggleFavorite('${item.id}', event)" title="${isFavorite(item.id) ? 'Favorilerden çıkar' : 'Favorilere ekle'}">
+								${isFavorite(item.id) ? '★' : '☆'}
+							</button>
+						</div>
 						<div class="meta">
 							<span>${formatDate(item.pubDate)}</span>
 							<span>${esc(item.source)}</span>
 						</div>
 					</div>
-				`).join('')
+				`}).join('')
 			}
 
-			function selectNews(encoded) {
-				const item = JSON.parse(decodeURIComponent(encoded))
+			// Modal fonksiyonları
+			function openModal(id) {
+				const item = getNewsById(id)
+				if (!item) return
+
+				const modal = document.getElementById('modalOverlay')
+				const content = document.getElementById('modalContent')
+
+				content.innerHTML = `
+					<div class="modal-header">
+						<h2>${esc(item.title)}</h2>
+						<button class="fav-btn large ${isFavorite(item.id) ? 'active' : ''}" onclick="toggleFavorite('${item.id}', event)">
+							${isFavorite(item.id) ? '★ Favorilerde' : '☆ Favorilere Ekle'}
+						</button>
+					</div>
+					<div class="modal-meta">
+						<span>${formatDate(item.pubDate)}</span>
+						<span>${esc(item.source)}</span>
+					</div>
+					<div class="modal-body">
+						<p>${esc(item.description || item.content || 'İçerik bulunamadı')}</p>
+					</div>
+					<div class="modal-actions">
+						<a href="${item.link}" target="_blank" class="btn">Habere Git</a>
+						<button class="btn btn-secondary" onclick="useForSummary('${item.id}')">Özetle</button>
+					</div>
+				`
+
+				modal.classList.add('active')
+				document.body.style.overflow = 'hidden'
+			}
+
+			function closeModal() {
+				document.getElementById('modalOverlay').classList.remove('active')
+				document.body.style.overflow = ''
+			}
+
+			function useForSummary(id) {
+				const item = getNewsById(id)
+				if (!item) return
+
 				const ta = document.getElementById('textToSummarize')
 				ta.value = `${item.title}\n\n${item.description || item.content || ''}`
+				closeModal()
 
-				// Metin özetleme kartına scroll yap
 				const card = ta.closest('.card')
 				if (card) {
 					card.scrollIntoView({ behavior: 'smooth', block: 'start' })
 				}
-
-				// Kısa bir gecikme ile focus ver (scroll tamamlandıktan sonra)
-				setTimeout(() => {
-					ta.focus()
-					ta.setSelectionRange(0, 0)
-				}, 300)
+				setTimeout(() => ta.focus(), 300)
 			}
+
+			// ESC tuşu ile modal kapatma
+			document.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape') closeModal()
+			})
 
 			async function summarizeText() {
 				const text = document.getElementById('textToSummarize').value
@@ -247,7 +451,10 @@
 				} catch { return '' }
 			}
 
-			window.onload = fetchNews
+			window.onload = () => {
+				fetchNews()
+				updateFavCount()
+			}
 		</script>
 	</body>
 </html>
