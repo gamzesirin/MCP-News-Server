@@ -612,3 +612,495 @@ textarea:focus {
 .btn-secondary:hover {
     background: var(--border);
 }
+
+/* ============ DUYGU ANALİZİ STİLLERİ ============ */
+
+.analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 768px) {
+    .analysis-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.analysis-section {
+    padding: 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+}
+
+.analysis-section h3 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 12px;
+}
+
+.analysis-section textarea {
+    min-height: 100px;
+}
+
+.analysis-section .filter-row {
+    flex-wrap: wrap;
+}
+
+.analysis-section .filter-row .btn {
+    width: auto;
+}
+
+/* Sentiment Result */
+.sentiment-result {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--bg);
+    border-radius: var(--radius);
+    text-align: center;
+}
+
+.sentiment-label {
+    display: inline-block;
+    padding: 8px 20px;
+    border-radius: 20px;
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sentiment-score {
+    margin-top: 12px;
+}
+
+.score-bar {
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.score-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s;
+}
+
+.sentiment-score span {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.sentiment-details {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 12px;
+    font-size: 0.8rem;
+}
+
+.sentiment-details .detail.positive {
+    color: #22c55e;
+}
+
+.sentiment-details .detail.negative {
+    color: #ef4444;
+}
+
+/* News Sentiment Summary */
+.sentiment-summary {
+    padding: 16px;
+    background: var(--bg);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+}
+
+.sentiment-summary h4 {
+    font-size: 0.875rem;
+    margin-bottom: 12px;
+}
+
+.sentiment-label-inline {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.sentiment-label-inline.pozitif {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.sentiment-label-inline.negatif {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.sentiment-label-inline.nötr {
+    background: #f3f4f6;
+    color: #4b5563;
+}
+
+/* Distribution Bar */
+.distribution-bar {
+    display: flex;
+    height: 32px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.dist-positive {
+    background: #22c55e;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 20px;
+}
+
+.dist-neutral {
+    background: #6b7280;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 20px;
+}
+
+.dist-negative {
+    background: #ef4444;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 20px;
+}
+
+.distribution-legend {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.dot.positive {
+    background: #22c55e;
+}
+
+.dot.neutral {
+    background: #6b7280;
+}
+
+.dot.negative {
+    background: #ef4444;
+}
+
+/* News Sentiment List */
+.news-sentiment-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.news-sentiment-item {
+    padding: 10px 12px;
+    background: var(--bg);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+}
+
+.news-sentiment-item .news-title {
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+
+.news-sentiment-item .news-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.sentiment-badge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.sentiment-badge.pozitif {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.sentiment-badge.negatif {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.sentiment-badge.nötr {
+    background: #f3f4f6;
+    color: #4b5563;
+}
+
+/* ============ DUPLİKASYON STİLLERİ ============ */
+
+.duplicate-summary {
+    margin-bottom: 16px;
+}
+
+.success-msg {
+    text-align: center;
+    color: var(--success);
+    margin-top: 12px;
+    font-size: 0.875rem;
+}
+
+.duplicate-groups {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.duplicate-group {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+}
+
+.group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.similarity-badge {
+    background: var(--primary);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.main-news {
+    background: var(--bg-secondary);
+    padding: 12px;
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+}
+
+.main-news .tag {
+    display: inline-block;
+    background: var(--primary);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.main-news .news-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.main-news .news-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.duplicates-list {
+    padding-left: 16px;
+    border-left: 2px solid var(--border);
+}
+
+.duplicate-item {
+    padding: 10px 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+}
+
+.duplicate-item:last-child {
+    margin-bottom: 0;
+}
+
+.duplicate-item .news-title {
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+}
+
+.duplicate-item .news-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.duplicate-item .similarity {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* Unique News */
+.unique-summary {
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    font-size: 0.875rem;
+}
+
+.unique-news-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Similarity Check */
+.similarity-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+@media (max-width: 768px) {
+    .similarity-inputs {
+        grid-template-columns: 1fr;
+    }
+}
+
+.similarity-inputs textarea {
+    min-height: 80px;
+    margin-bottom: 0;
+}
+
+.similarity-result {
+    margin-top: 16px;
+    padding: 24px;
+    border-radius: var(--radius);
+    text-align: center;
+}
+
+.similarity-result.duplicate {
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+}
+
+.similarity-result.unique {
+    background: #dcfce7;
+    border: 1px solid #86efac;
+}
+
+.similarity-score {
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+.similarity-result.duplicate .similarity-score {
+    color: #dc2626;
+}
+
+.similarity-result.unique .similarity-score {
+    color: #16a34a;
+}
+
+.similarity-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin: 8px 0 16px;
+}
+
+.similarity-result.duplicate .similarity-label {
+    color: #991b1b;
+}
+
+.similarity-result.unique .similarity-label {
+    color: #166534;
+}
+
+.similarity-bar {
+    height: 8px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.similarity-bar .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s;
+}
+
+.similarity-result.duplicate .bar-fill {
+    background: #dc2626;
+}
+
+.similarity-result.unique .bar-fill {
+    background: #16a34a;
+}
+
+/* Filter row input */
+.filter-row input[type="number"] {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.filter-row input[type="range"] {
+    cursor: pointer;
+}
+
+.filter-row label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    color: var(--text);
+}
+
+#thresholdLabel {
+    font-weight: 600;
+    color: var(--primary);
+    min-width: 40px;
+}

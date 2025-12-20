@@ -76,6 +76,60 @@
 				<div id="trendsResult"></div>
 			</section>
 
+			<!-- Duygu Analizi Bölümü -->
+			<section class="card">
+				<h2>Duygu Analizi</h2>
+				<div class="analysis-grid">
+					<div class="analysis-section">
+						<h3>Metin Analizi</h3>
+						<textarea id="sentimentText" placeholder="Duygu analizi yapılacak metni girin..."></textarea>
+						<button class="btn" onclick="analyzeSentiment()">Analiz Et</button>
+						<div class="loading" id="sentimentLoading">
+							<div class="spinner"></div>
+							<p>Analiz ediliyor...</p>
+						</div>
+						<div id="sentimentResult"></div>
+					</div>
+					<div class="analysis-section">
+						<h3>Haberlerin Duygu Analizi</h3>
+						<div class="filter-row">
+							<select id="sentimentCategory">
+								<option value="">Tüm Kategoriler</option>
+								<option value="genel">Genel</option>
+								<option value="teknoloji">Teknoloji</option>
+								<option value="ekonomi">Ekonomi</option>
+								<option value="spor">Spor</option>
+								<option value="dünya">Dünya</option>
+							</select>
+							<input type="number" id="sentimentLimit" value="10" min="1" max="50" style="width:80px" />
+							<button class="btn" onclick="analyzeNewsSentiment()">Haberleri Analiz Et</button>
+						</div>
+						<div class="loading" id="newsSentimentLoading">
+							<div class="spinner"></div>
+							<p>Haberler analiz ediliyor...</p>
+						</div>
+						<div id="newsSentimentResult"></div>
+					</div>
+				</div>
+			</section>
+
+			<!-- Duplikasyon Araçları Bölümü -->
+			<section class="card">
+				<h2>Metin Benzerlik Kontrolü</h2>
+				<div class="analysis-section">
+					<div class="similarity-inputs">
+						<textarea id="text1" placeholder="Birinci metin..."></textarea>
+						<textarea id="text2" placeholder="İkinci metin..."></textarea>
+					</div>
+					<button class="btn" onclick="checkSimilarity()">Karşılaştır</button>
+					<div class="loading" id="similarityLoading">
+						<div class="spinner"></div>
+						<p>Karşılaştırılıyor...</p>
+					</div>
+					<div id="similarityResult"></div>
+				</div>
+			</section>
+
 			<footer class="footer">
 				MCP News Server
 			</footer>
@@ -435,6 +489,173 @@
 						</div>
 					` : ''}
 				`
+			}
+
+			// ============ DUYGU ANALİZİ FONKSİYONLARI ============
+
+			async function analyzeSentiment() {
+				const text = document.getElementById('sentimentText').value
+				const loading = document.getElementById('sentimentLoading')
+				const result = document.getElementById('sentimentResult')
+
+				if (!text.trim()) {
+					result.innerHTML = '<div class="error">Metin girin</div>'
+					return
+				}
+
+				loading.classList.add('active')
+				result.innerHTML = ''
+
+				try {
+					const response = await fetch(`${API_URL}/sentiment`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ text })
+					})
+					const data = await response.json()
+
+					if (data.success) {
+						displaySentimentResult(data.data, result)
+					} else {
+						result.innerHTML = `<div class="error">${data.error}</div>`
+					}
+				} catch (error) {
+					result.innerHTML = '<div class="error">Bağlantı hatası</div>'
+				} finally {
+					loading.classList.remove('active')
+				}
+			}
+
+			function displaySentimentResult(data, container) {
+				const labelColors = {
+					'pozitif': '#22c55e',
+					'negatif': '#ef4444',
+					'nötr': '#6b7280'
+				}
+				const color = labelColors[data.label] || '#6b7280'
+
+				container.innerHTML = `
+					<div class="sentiment-result">
+						<div class="sentiment-label" style="background: ${color}">${data.label.toUpperCase()}</div>
+						<div class="sentiment-score">
+							<div class="score-bar">
+								<div class="score-fill" style="width: ${Math.abs(data.score) * 100}%; background: ${color}"></div>
+							</div>
+							<span>Skor: ${data.score.toFixed(2)}</span>
+						</div>
+						${data.details ? `
+							<div class="sentiment-details">
+								<span class="detail positive">Pozitif: ${data.details.positiveWords || 0}</span>
+								<span class="detail negative">Negatif: ${data.details.negativeWords || 0}</span>
+							</div>
+						` : ''}
+					</div>
+				`
+			}
+
+			async function analyzeNewsSentiment() {
+				const category = document.getElementById('sentimentCategory').value
+				const limit = document.getElementById('sentimentLimit').value
+				const loading = document.getElementById('newsSentimentLoading')
+				const result = document.getElementById('newsSentimentResult')
+
+				loading.classList.add('active')
+				result.innerHTML = ''
+
+				try {
+					const params = new URLSearchParams({ limit })
+					if (category) params.append('category', category)
+
+					const response = await fetch(`${API_URL}/sentiment/news?${params}`)
+					const data = await response.json()
+
+					if (data.success) {
+						displayNewsSentiment(data.data, result)
+					} else {
+						result.innerHTML = `<div class="error">${data.error}</div>`
+					}
+				} catch (error) {
+					result.innerHTML = '<div class="error">Bağlantı hatası</div>'
+				} finally {
+					loading.classList.remove('active')
+				}
+			}
+
+			function displayNewsSentiment(data, container) {
+				const { summary, news } = data
+				const total = summary.totalAnalyzed
+
+				container.innerHTML = `
+					<div class="sentiment-summary">
+						<h4>Genel Durum: <span class="sentiment-label-inline ${summary.overallLabel}">${summary.overallLabel.toUpperCase()}</span></h4>
+						<div class="distribution-bar">
+							<div class="dist-positive" style="width: ${(summary.distribution.positive / total) * 100}%">${summary.distribution.positive}</div>
+							<div class="dist-neutral" style="width: ${(summary.distribution.neutral / total) * 100}%">${summary.distribution.neutral}</div>
+							<div class="dist-negative" style="width: ${(summary.distribution.negative / total) * 100}%">${summary.distribution.negative}</div>
+						</div>
+						<div class="distribution-legend">
+							<span class="legend-item"><span class="dot positive"></span> Pozitif</span>
+							<span class="legend-item"><span class="dot neutral"></span> Nötr</span>
+							<span class="legend-item"><span class="dot negative"></span> Negatif</span>
+						</div>
+					</div>
+					<div class="news-sentiment-list">
+						${news.map(n => `
+							<div class="news-sentiment-item">
+								<div class="news-title">${esc(n.title)}</div>
+								<div class="news-meta">
+									<span>${esc(n.source)}</span>
+									<span class="sentiment-badge ${n.sentiment.label}">${n.sentiment.label}</span>
+								</div>
+							</div>
+						`).join('')}
+					</div>
+				`
+			}
+
+			// ============ METİN BENZERLİK FONKSİYONU ============
+
+			async function checkSimilarity() {
+				const text1 = document.getElementById('text1').value
+				const text2 = document.getElementById('text2').value
+				const loading = document.getElementById('similarityLoading')
+				const result = document.getElementById('similarityResult')
+
+				if (!text1.trim() || !text2.trim()) {
+					result.innerHTML = '<div class="error">Her iki metni de girin</div>'
+					return
+				}
+
+				loading.classList.add('active')
+				result.innerHTML = ''
+
+				try {
+					const response = await fetch(`${API_URL}/similarity`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ text1, text2 })
+					})
+					const data = await response.json()
+
+					if (data.success) {
+						const { similarity, isDuplicate } = data.data
+						result.innerHTML = `
+							<div class="similarity-result ${isDuplicate ? 'duplicate' : 'unique'}">
+								<div class="similarity-score">${similarity}%</div>
+								<div class="similarity-label">${isDuplicate ? 'Muhtemelen Aynı Haber' : 'Farklı Haberler'}</div>
+								<div class="similarity-bar">
+									<div class="bar-fill" style="width: ${similarity}%"></div>
+								</div>
+							</div>
+						`
+					} else {
+						result.innerHTML = `<div class="error">${data.error}</div>`
+					}
+				} catch (error) {
+					result.innerHTML = '<div class="error">Bağlantı hatası</div>'
+				} finally {
+					loading.classList.remove('active')
+				}
 			}
 
 			function esc(t) {
