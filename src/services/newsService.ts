@@ -27,7 +27,7 @@ export class NewsService {
 	/**
 	 * RSS feed'den haberleri çeker
 	 */
-	async fetchNewsFromRSS(feedUrl: string): Promise<NewsFeed> {
+	async rssdenHaberleriCek(feedUrl: string): Promise<NewsFeed> {
 		try {
 			const feed = await this.parser.parseURL(feedUrl)
 
@@ -77,13 +77,13 @@ export class NewsService {
 	/**
 	 * Tüm kaynaklardan haberleri toplar
 	 */
-	async fetchAllNews(): Promise<NewsItem[]> {
+	async tumHaberleriCek(): Promise<NewsItem[]> {
 		const allNews: NewsItem[] = []
 		const errors: string[] = []
 
 		for (const feedUrl of this.rssFeedUrls) {
 			try {
-				const feed = await this.fetchNewsFromRSS(feedUrl)
+				const feed = await this.rssdenHaberleriCek(feedUrl)
 				allNews.push(...feed.items)
 			} catch (error) {
 				errors.push(`${feedUrl}: ${error}`)
@@ -103,7 +103,7 @@ export class NewsService {
 	/**
 	 * Haber içeriğini web sayfasından çeker
 	 */
-	async fetchFullContent(newsUrl: string): Promise<string> {
+	async tamIcerikCek(newsUrl: string): Promise<string> {
 		try {
 			const response = await axios.get(newsUrl, {
 				headers: {
@@ -166,14 +166,14 @@ export class NewsService {
 	/**
 	 * Kategoriye göre haberleri filtreler
 	 */
-	filterByCategory(news: NewsItem[], category: string): NewsItem[] {
+	kategoriyeGoreFiltrele(news: NewsItem[], category: string): NewsItem[] {
 		return news.filter((item) => item.category?.toLowerCase().includes(category.toLowerCase()))
 	}
 
 	/**
 	 * Anahtar kelimeye göre haberleri arar
 	 */
-	searchNews(news: NewsItem[], keyword: string): NewsItem[] {
+	haberleriAra(news: NewsItem[], keyword: string): NewsItem[] {
 		const lowerKeyword = keyword.toLowerCase()
 		return news.filter(
 			(item) =>

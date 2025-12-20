@@ -11,6 +11,8 @@ import {
 import { NewsService } from './services/newsService.js'
 import { SummaryService } from './services/summaryService.js'
 import { CacheService } from './services/cacheService.js'
+import { SentimentService } from './services/sentimentService.js'
+import { DuplicateService } from './services/duplicateService.js'
 import { NewsItem } from './types/news.js'
 import dotenv from 'dotenv'
 
@@ -21,6 +23,8 @@ dotenv.config()
 let newsService: NewsService
 let summaryService: SummaryService
 let cacheService: CacheService
+let sentimentService: SentimentService
+let duplicateService: DuplicateService
 
 // MCP Server oluştur
 const server = new Server(
@@ -129,6 +133,98 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 						default: 10
 					}
 				}
+			}
+		},
+		{
+			name: 'analyze_sentiment',
+			description: 'Haber metninin duygusal tonunu analiz eder (pozitif/negatif/nötr)',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					text: {
+						type: 'string',
+						description: 'Analiz edilecek metin'
+					},
+					newsId: {
+						type: 'string',
+						description: "Alternatif olarak, daha önce çekilen haberin ID'si"
+					}
+				},
+				oneOf: [{ required: ['text'] }, { required: ['newsId'] }]
+			}
+		},
+		{
+			name: 'analyze_sentiment_batch',
+			description: 'Birden fazla haberin duygusal tonunu toplu analiz eder',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					category: {
+						type: 'string',
+						description: 'Kategori filtresi (opsiyonel)'
+					},
+					limit: {
+						type: 'number',
+						description: 'Maksimum haber sayısı (varsayılan: 10)',
+						default: 10
+					}
+				}
+			}
+		},
+		{
+			name: 'find_duplicates',
+			description: 'Haberlerdeki tekrarlayan/benzer içerikleri tespit eder',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					threshold: {
+						type: 'number',
+						description: 'Benzerlik eşiği (0-1 arası, varsayılan: 0.6)',
+						default: 0.6
+					},
+					category: {
+						type: 'string',
+						description: 'Kategori filtresi (opsiyonel)'
+					}
+				}
+			}
+		},
+		{
+			name: 'get_unique_news',
+			description: 'Tekrarlayan haberler temizlenmiş benzersiz haber listesi döndürür',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					threshold: {
+						type: 'number',
+						description: 'Benzerlik eşiği (0-1 arası, varsayılan: 0.6)',
+						default: 0.6
+					},
+					limit: {
+						type: 'number',
+						description: 'Maksimum haber sayısı (varsayılan: 20)',
+						default: 20
+					}
+				}
+			}
+		},
+		{
+			name: 'check_duplicate',
+			description: 'Belirli bir haberin başka haberlerle benzerliğini kontrol eder',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					newsId: {
+						type: 'string',
+						description: "Kontrol edilecek haberin ID'si"
+					},
+					threshold: {
+						type: 'number',
+						description: 'Benzerlik eşiği (0-1 arası, varsayılan: 0.6)',
+						default: 0.6
+					}
+				},
+				required: ['newsId']
 			}
 		}
 	]
@@ -415,7 +511,14 @@ ${focusAreas ? `Odak alanları: ${focusAreas}` : 'Tüm kategoriler dahil'}
 [Haftanın en çok konuşulan konuları]
 
 ### Kategori Bazlı Özet
-${focusAreas ? focusAreas.split(',').map((area: string) => `- ${area.trim()}: [özet]`).join('\n') : '- Ekonomi:\n- Siyaset:\n- Teknoloji:\n- Dünya:'}
+${
+	focusAreas
+		? focusAreas
+				.split(',')
+				.map((area: string) => `- ${area.trim()}: [özet]`)
+				.join('\n')
+		: '- Ekonomi:\n- Siyaset:\n- Teknoloji:\n- Dünya:'
+}
 
 ### Anahtar Kelimeler ve İstatistikler
 [Haftanın anahtar kelimeleri ve haber sayıları]
@@ -463,18 +566,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 				// Yeni haberler çek
 				let news: NewsItem[]
 				if (source) {
-					const feed = await newsService.fetchNewsFromRSS(source)
+					const feed = await newsService.rssdenHaberleriCek(source)
 					news = feed.items
 				} else {
-					news = await newsService.fetchAllNews()
+					news = await newsService.tumHaberleriCek()
 				}
 
 				// Filtrele
 				if (category) {
-					news = newsService.filterByCategory(news, category)
+					news = newsService.kategoriyeGoreFiltrele(news, category)
 				}
 				if (keyword) {
-					news = newsService.searchNews(news, keyword)
+					news = newsService.haberleriAra(news, keyword)
 				}
 
 				// Limitle ve cache'le
@@ -517,7 +620,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 					throw new Error('text veya newsId parametresi gerekli')
 				}
 
-				const result = summaryService.summarize(contentToSummarize, sentenceCount, { extractKeywords })
+				const result = summaryService.ozetle(contentToSummarize, sentenceCount, { extractKeywords })
 
 				return {
 					content: [
@@ -550,7 +653,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 					throw new Error('url veya newsId parametresi gerekli')
 				}
 
-				const content = await newsService.fetchFullContent(targetUrl)
+				const content = await newsService.tamIcerikCek(targetUrl)
 
 				return {
 					content: [
@@ -589,7 +692,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 				const allText = recentNews.map((news) => `${news.title} ${news.description || ''}`).join(' ')
 
 				// Özet ve anahtar kelimeler
-				const analysis = summaryService.summarize(allText, 5, { extractKeywords: true })
+				const analysis = summaryService.ozetle(allText, 5, { extractKeywords: true })
 
 				const result = {
 					period: `Son ${hours} saat`,
@@ -612,6 +715,256 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 						{
 							type: 'text',
 							text: JSON.stringify(result, null, 2)
+						}
+					]
+				}
+			}
+
+			// ============ SENTIMENT ANALYSIS TOOLS ============
+
+			case 'analyze_sentiment': {
+				const { text, newsId } = args as any
+
+				let contentToAnalyze: string
+				let title: string | undefined
+
+				if (newsId) {
+					const news = cacheService.get(`news:id:${newsId}`) as NewsItem
+					if (!news) {
+						throw new Error(`Haber bulunamadı: ${newsId}`)
+					}
+					title = news.title
+					contentToAnalyze = news.content || news.description || news.title
+				} else if (text) {
+					contentToAnalyze = text
+				} else {
+					throw new Error('text veya newsId parametresi gerekli')
+				}
+
+				const result = title
+					? sentimentService.haberAnalizEt(title, contentToAnalyze)
+					: sentimentService.analizEt(contentToAnalyze)
+
+				const labelTr = {
+					positive: 'Pozitif',
+					negative: 'Negatif',
+					neutral: 'Nötr'
+				}
+
+				return {
+					content: [
+						{
+							type: 'text',
+							text: `Duygu Analizi: ${labelTr[result.label]} (Skor: ${result.score})`
+						},
+						{
+							type: 'text',
+							text: JSON.stringify(result, null, 2)
+						}
+					]
+				}
+			}
+
+			case 'analyze_sentiment_batch': {
+				const { category, limit = 10 } = args as any
+
+				let news = cacheService.getAllCachedNews()
+
+				if (news.length === 0) {
+					// Cache boşsa yeni haberler çek
+					news = await newsService.tumHaberleriCek()
+				}
+
+				if (category) {
+					news = newsService.kategoriyeGoreFiltrele(news, category)
+				}
+
+				news = news.slice(0, limit)
+
+				const texts = news.map((n) => `${n.title} ${n.description || ''}`)
+				const batchResult = sentimentService.cokluAnalizEt(texts)
+
+				const detailedResults = news.map((n, i) => ({
+					id: n.id,
+					title: n.title,
+					source: n.source,
+					sentiment: batchResult.results[i]
+				}))
+
+				const labelTr = {
+					positive: 'Pozitif',
+					negative: 'Negatif',
+					neutral: 'Nötr'
+				}
+
+				return {
+					content: [
+						{
+							type: 'text',
+							text: `${news.length} haber analiz edildi. Genel ton: ${
+								labelTr[batchResult.aggregate.overallLabel]
+							} (Ortalama skor: ${batchResult.aggregate.averageScore})`
+						},
+						{
+							type: 'text',
+							text: JSON.stringify(
+								{
+									summary: {
+										totalAnalyzed: news.length,
+										averageScore: batchResult.aggregate.averageScore,
+										overallLabel: batchResult.aggregate.overallLabel,
+										distribution: {
+											positive: batchResult.aggregate.positiveCount,
+											negative: batchResult.aggregate.negativeCount,
+											neutral: batchResult.aggregate.neutralCount
+										}
+									},
+									details: detailedResults
+								},
+								null,
+								2
+							)
+						}
+					]
+				}
+			}
+
+			// ============ DUPLICATE DETECTION TOOLS ============
+
+			case 'find_duplicates': {
+				const { threshold = 0.6, category } = args as any
+
+				let news = cacheService.getAllCachedNews()
+
+				if (news.length === 0) {
+					news = await newsService.tumHaberleriCek()
+				}
+
+				if (category) {
+					news = newsService.kategoriyeGoreFiltrele(news, category)
+				}
+
+				const result = duplicateService.kopyalariBul(news, threshold)
+
+				const duplicateInfo = result.duplicateGroups.map((group) => ({
+					mainNews: {
+						id: group.mainNews.id,
+						title: group.mainNews.title,
+						source: group.mainNews.source
+					},
+					duplicateCount: group.duplicates.length,
+					averageSimilarity: group.averageSimilarity,
+					duplicates: group.duplicates.map((d) => ({
+						id: d.news.id,
+						title: d.news.title,
+						source: d.news.source,
+						similarity: `${Math.round(d.similarity * 100)}%`
+					}))
+				}))
+
+				return {
+					content: [
+						{
+							type: 'text',
+							text: `${result.totalNews} haberden ${result.duplicateGroupCount} tekrarlayan grup bulundu. Benzersiz haber sayısı: ${result.uniqueCount}`
+						},
+						{
+							type: 'text',
+							text: JSON.stringify(
+								{
+									summary: {
+										totalNews: result.totalNews,
+										uniqueCount: result.uniqueCount,
+										duplicateGroups: result.duplicateGroupCount,
+										threshold: result.threshold
+									},
+									duplicateGroups: duplicateInfo
+								},
+								null,
+								2
+							)
+						}
+					]
+				}
+			}
+
+			case 'get_unique_news': {
+				const { threshold = 0.6, limit = 20 } = args as any
+
+				let news = cacheService.getAllCachedNews()
+
+				if (news.length === 0) {
+					news = await newsService.tumHaberleriCek()
+				}
+
+				const uniqueNews = duplicateService.haberleriTekillesir(news, threshold).slice(0, limit)
+
+				return {
+					content: [
+						{
+							type: 'text',
+							text: `${news.length} haberden ${uniqueNews.length} benzersiz haber döndürülüyor.`
+						},
+						{
+							type: 'text',
+							text: JSON.stringify(uniqueNews, null, 2)
+						}
+					]
+				}
+			}
+
+			case 'check_duplicate': {
+				const { newsId, threshold = 0.6 } = args as any
+
+				const targetNews = cacheService.get(`news:id:${newsId}`) as NewsItem
+				if (!targetNews) {
+					throw new Error(`Haber bulunamadı: ${newsId}`)
+				}
+
+				const allNews = cacheService.getAllCachedNews()
+				const result = duplicateService.belirliKopyalariBul(targetNews, allNews, threshold)
+
+				if (result.duplicates.length === 0) {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: `"${targetNews.title}" haberi için benzer haber bulunamadı.`
+							}
+						]
+					}
+				}
+
+				const duplicateInfo = result.duplicates.map((d) => ({
+					id: d.news.id,
+					title: d.news.title,
+					source: d.news.source,
+					similarity: `${Math.round(d.similarity * 100)}%`,
+					titleSimilarity: `${Math.round(d.titleSimilarity * 100)}%`,
+					contentSimilarity: `${Math.round(d.contentSimilarity * 100)}%`
+				}))
+
+				return {
+					content: [
+						{
+							type: 'text',
+							text: `"${targetNews.title}" haberi için ${result.duplicates.length} benzer haber bulundu.`
+						},
+						{
+							type: 'text',
+							text: JSON.stringify(
+								{
+									targetNews: {
+										id: targetNews.id,
+										title: targetNews.title,
+										source: targetNews.source
+									},
+									similarNews: duplicateInfo,
+									averageSimilarity: result.averageSimilarity
+								},
+								null,
+								2
+							)
 						}
 					]
 				}
@@ -640,6 +993,8 @@ async function main() {
 	const feedUrls = process.env.RSS_FEEDS?.split(',').map((url) => url.trim())
 	newsService = new NewsService(feedUrls)
 	summaryService = new SummaryService()
+	sentimentService = new SentimentService()
+	duplicateService = new DuplicateService()
 
 	const ttl = parseInt(process.env.CACHE_TTL || '3600')
 	const checkPeriod = parseInt(process.env.CACHE_CHECK_PERIOD || '600')

@@ -84,7 +84,7 @@ export class SummaryService {
 	/**
 	 * Metni cümlelere ayırır
 	 */
-	private splitIntoSentences(text: string): string[] {
+	private cumlelereAyir(text: string): string[] {
 		// Türkçe cümle sonları için özel işleme
 		const sentences = text
 			.replace(/([.!?])\s*(?=[A-ZÇĞİÖŞÜ])/g, '$1|')
@@ -98,7 +98,7 @@ export class SummaryService {
 	/**
 	 * Kelimeleri temizler ve normalize eder
 	 */
-	private preprocessWords(text: string): string[] {
+	private kelimeleriIsle(text: string): string[] {
 		const words = this.tokenizer.tokenize(text.toLowerCase())
 		return words.filter((word: string) => {
 			return word.length > 2 && !this.stopWords.has(word)
@@ -108,18 +108,18 @@ export class SummaryService {
 	/**
 	 * Cümleleri TF-IDF skorlarına göre sıralar
 	 */
-	private scoreSentences(sentences: string[]): Array<{ sentence: string; score: number }> {
+	private cumleleriSkorla(sentences: string[]): Array<{ sentence: string; score: number }> {
 		const scoredSentences: Array<{ sentence: string; score: number }> = []
 
 		// TF-IDF hesaplama için tüm cümleleri ekle
 		sentences.forEach((sentence) => {
-			this.tfidf.addDocument(this.preprocessWords(sentence))
+			this.tfidf.addDocument(this.kelimeleriIsle(sentence))
 		})
 
 		// Her cümle için skor hesapla
 		sentences.forEach((sentence, index) => {
 			let score = 0
-			const words = this.preprocessWords(sentence)
+			const words = this.kelimeleriIsle(sentence)
 
 			// Her kelime için TF-IDF skorunu topla
 			words.forEach((word: string) => {
@@ -149,8 +149,8 @@ export class SummaryService {
 	/**
 	 * Anahtar kelimeleri çıkarır
 	 */
-	private extractKeywords(text: string, count: number = 5): string[] {
-		const words = this.preprocessWords(text)
+	private anahtarKelimelerCikar(text: string, count: number = 5): string[] {
+		const words = this.kelimeleriIsle(text)
 		const wordFreq = new Map<string, number>()
 
 		// Kelime frekanslarını hesapla
@@ -170,7 +170,7 @@ export class SummaryService {
 	/**
 	 * Metni özetler
 	 */
-	summarize(text: string, sentenceCount: number = 3, options: { extractKeywords?: boolean } = {}): SummaryResult {
+	ozetle(text: string, sentenceCount: number = 3, options: { extractKeywords?: boolean } = {}): SummaryResult {
 		// Boş veya çok kısa metin kontrolü
 		if (!text || text.length < 100) {
 			return {
@@ -186,7 +186,7 @@ export class SummaryService {
 		this.tfidf = new natural.TfIdf()
 
 		// Cümlelere ayır
-		const sentences = this.splitIntoSentences(text)
+		const sentences = this.cumlelereAyir(text)
 
 		// Eğer cümle sayısı istenen özet uzunluğundan azsa, tüm metni döndür
 		if (sentences.length <= sentenceCount) {
@@ -195,12 +195,12 @@ export class SummaryService {
 				summary: sentences.join(' '),
 				sentenceCount: sentences.length,
 				reductionRatio: 0,
-				keywords: options.extractKeywords ? this.extractKeywords(text) : undefined
+				keywords: options.extractKeywords ? this.anahtarKelimelerCikar(text) : undefined
 			}
 		}
 
 		// Cümleleri skorla
-		const scoredSentences = this.scoreSentences(sentences)
+		const scoredSentences = this.cumleleriSkorla(sentences)
 
 		// En yüksek skorlu cümleleri seç
 		const selectedSentences = scoredSentences.slice(0, sentenceCount).map((item) => item.sentence)
@@ -220,7 +220,7 @@ export class SummaryService {
 
 		// Anahtar kelimeler isteniyorsa ekle
 		if (options.extractKeywords) {
-			result.keywords = this.extractKeywords(text)
+			result.keywords = this.anahtarKelimelerCikar(text)
 		}
 
 		return result
@@ -229,17 +229,17 @@ export class SummaryService {
 	/**
 	 * Birden fazla haber metnini birleştirip özetler
 	 */
-	summarizeMultiple(texts: string[], totalSentences: number = 5): SummaryResult {
+	cokluOzetle(texts: string[], totalSentences: number = 5): SummaryResult {
 		// Tüm metinleri birleştir
 		const combinedText = texts.join(' ')
-		return this.summarize(combinedText, totalSentences, { extractKeywords: true })
+		return this.ozetle(combinedText, totalSentences, { extractKeywords: true })
 	}
 
 	/**
 	 * Başlık oluşturur (özetten ilk cümleyi alır ve kısaltır)
 	 */
-	generateTitle(text: string, maxLength: number = 100): string {
-		const summary = this.summarize(text, 1)
+	baslikOlustur(text: string, maxLength: number = 100): string {
+		const summary = this.ozetle(text, 1)
 		let title = summary.summary
 
 		if (title.length > maxLength) {
