@@ -309,7 +309,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 server.setRequestHandler(ListPromptsRequestSchema, async () => ({
 	prompts: [
 		{
-			name: 'daily_news_summary',
+			name: 'gunluk_haber_ozeti',
 			description: 'Günlük haber özeti oluşturur. Tüm kaynaklardan haberleri çeker ve kapsamlı bir özet sunar.',
 			arguments: [
 				{
@@ -325,7 +325,7 @@ server.setRequestHandler(ListPromptsRequestSchema, async () => ({
 			]
 		},
 		{
-			name: 'topic_analysis',
+			name: 'konu_analizi',
 			description: 'Belirli bir konu hakkında haberleri analiz eder ve detaylı bir rapor oluşturur.',
 			arguments: [
 				{
@@ -341,7 +341,7 @@ server.setRequestHandler(ListPromptsRequestSchema, async () => ({
 			]
 		},
 		{
-			name: 'news_comparison',
+			name: 'haber_karsilastirma',
 			description: 'Farklı haber kaynaklarının aynı konuyu nasıl ele aldığını karşılaştırır.',
 			arguments: [
 				{
@@ -352,7 +352,7 @@ server.setRequestHandler(ListPromptsRequestSchema, async () => ({
 			]
 		},
 		{
-			name: 'weekly_briefing',
+			name: 'haftalik_brifing',
 			description: 'Haftalık haber brifing raporu oluşturur. Öne çıkan haberler, trendler ve anahtar kelimeler içerir.',
 			arguments: [
 				{
@@ -370,7 +370,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 	const { name, arguments: args } = request.params
 
 	switch (name) {
-		case 'daily_news_summary': {
+		case 'gunluk_haber_ozeti': {
 			const category = args?.category || ''
 			const maxNews = args?.maxNews || '10'
 			return {
@@ -402,7 +402,7 @@ Maksimum haber sayısı: ${maxNews}
 			}
 		}
 
-		case 'topic_analysis': {
+		case 'konu_analizi': {
 			const topic = args?.topic
 			if (!topic) {
 				throw new Error('topic parametresi zorunludur')
@@ -444,7 +444,7 @@ Analiz derinliği: ${depth} - ${depthInstructions[depth as keyof typeof depthIns
 			}
 		}
 
-		case 'news_comparison': {
+		case 'haber_karsilastirma': {
 			const topic = args?.topic
 			if (!topic) {
 				throw new Error('topic parametresi zorunludur')
@@ -482,7 +482,7 @@ Kaynaklar: BBC Türkçe, Ensonhaber, Milliyet, BloombergHT
 			}
 		}
 
-		case 'weekly_briefing': {
+		case 'haftalik_brifing': {
 			const focusAreas = args?.focusAreas || ''
 
 			return {
