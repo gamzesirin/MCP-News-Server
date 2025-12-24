@@ -45,7 +45,7 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
 	tools: [
 		{
-			name: 'fetch_news',
+			name: 'haber_cek',
 			description: 'RSS kaynaklarından güncel haberleri çeker',
 			inputSchema: {
 				type: 'object',
@@ -71,7 +71,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 			}
 		},
 		{
-			name: 'summarize_news',
+			name: 'haber_ozetle',
 			description: 'Haber metnini özetler',
 			inputSchema: {
 				type: 'object',
@@ -99,7 +99,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 			}
 		},
 		{
-			name: 'get_full_content',
+			name: 'tam_icerik_al',
 			description: 'Haberin tam içeriğini web sayfasından çeker',
 			inputSchema: {
 				type: 'object',
@@ -117,7 +117,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 			}
 		},
 		{
-			name: 'analyze_trends',
+			name: 'trend_analiz',
 			description: 'Haberlerdeki trendleri ve en çok kullanılan kelimeleri analiz eder',
 			inputSchema: {
 				type: 'object',
@@ -136,7 +136,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 			}
 		},
 		{
-			name: 'analyze_sentiment',
+			name: 'duygu_analiz',
 			description: 'Haber metninin duygusal tonunu analiz eder (pozitif/negatif/nötr)',
 			inputSchema: {
 				type: 'object',
@@ -154,7 +154,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 			}
 		},
 		{
-			name: 'analyze_sentiment_batch',
+			name: 'toplu_duygu_analiz',
 			description: 'Birden fazla haberin duygusal tonunu toplu analiz eder',
 			inputSchema: {
 				type: 'object',
@@ -172,7 +172,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 			}
 		},
 		{
-			name: 'find_duplicates',
+			name: 'kopyalari_bul',
 			description: 'Haberlerdeki tekrarlayan/benzer içerikleri tespit eder',
 			inputSchema: {
 				type: 'object',
@@ -190,7 +190,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 			}
 		},
 		{
-			name: 'get_unique_news',
+			name: 'benzersiz_haberler',
 			description: 'Tekrarlayan haberler temizlenmiş benzersiz haber listesi döndürür',
 			inputSchema: {
 				type: 'object',
@@ -209,7 +209,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 			}
 		},
 		{
-			name: 'check_duplicate',
+			name: 'kopya_kontrol',
 			description: 'Belirli bir haberin başka haberlerle benzerliğini kontrol eder',
 			inputSchema: {
 				type: 'object',
@@ -542,7 +542,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 	try {
 		switch (name) {
-			case 'fetch_news': {
+			case 'haber_cek': {
 				const { source, category, keyword, limit = 10 } = args as any
 
 				// Cache'ten kontrol et
@@ -603,7 +603,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 				}
 			}
 
-			case 'summarize_news': {
+			case 'haber_ozetle': {
 				const { text, newsId, sentenceCount = 3, extractKeywords = true } = args as any
 
 				let contentToSummarize: string
@@ -636,7 +636,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 				}
 			}
 
-			case 'get_full_content': {
+			case 'tam_icerik_al': {
 				const { url, newsId } = args as any
 
 				let targetUrl: string
@@ -669,7 +669,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 				}
 			}
 
-			case 'analyze_trends': {
+			case 'trend_analiz': {
 				const { hours = 24 } = args as any
 
 				const allNews = cacheService.getAllCachedNews()
@@ -722,7 +722,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 			// ============ SENTIMENT ANALYSIS TOOLS ============
 
-			case 'analyze_sentiment': {
+			case 'duygu_analiz': {
 				const { text, newsId } = args as any
 
 				let contentToAnalyze: string
@@ -765,7 +765,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 				}
 			}
 
-			case 'analyze_sentiment_batch': {
+			case 'toplu_duygu_analiz': {
 				const { category, limit = 10 } = args as any
 
 				let news = cacheService.getAllCachedNews()
@@ -831,7 +831,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 			// ============ DUPLICATE DETECTION TOOLS ============
 
-			case 'find_duplicates': {
+			case 'kopyalari_bul': {
 				const { threshold = 0.6, category } = args as any
 
 				let news = cacheService.getAllCachedNews()
@@ -888,7 +888,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 				}
 			}
 
-			case 'get_unique_news': {
+			case 'benzersiz_haberler': {
 				const { threshold = 0.6, limit = 20 } = args as any
 
 				let news = cacheService.getAllCachedNews()
@@ -913,7 +913,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 				}
 			}
 
-			case 'check_duplicate': {
+			case 'kopya_kontrol': {
 				const { newsId, threshold = 0.6 } = args as any
 
 				const targetNews = cacheService.get(`news:id:${newsId}`) as NewsItem
