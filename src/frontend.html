@@ -493,6 +493,16 @@
 
 			// ============ DUYGU ANALİZİ FONKSİYONLARI ============
 
+			// Label çevirisi (API: positive/negative/neutral -> Türkçe)
+			function translateLabel(label) {
+				const translations = {
+					'positive': 'pozitif',
+					'negative': 'negatif',
+					'neutral': 'nötr'
+				}
+				return translations[label] || label
+			}
+
 			async function analyzeSentiment() {
 				const text = document.getElementById('sentimentText').value
 				const loading = document.getElementById('sentimentLoading')
@@ -528,25 +538,29 @@
 
 			function displaySentimentResult(data, container) {
 				const labelColors = {
-					'pozitif': '#22c55e',
-					'negatif': '#ef4444',
-					'nötr': '#6b7280'
+					'positive': '#22c55e',
+					'negative': '#ef4444',
+					'neutral': '#6b7280'
 				}
 				const color = labelColors[data.label] || '#6b7280'
+				const turkishLabel = translateLabel(data.label)
+
+				// Score bar genişliği hesapla (0-1 arası normalize)
+				const normalizedScore = Math.min(Math.abs(data.score) / 5, 1)
 
 				container.innerHTML = `
 					<div class="sentiment-result">
-						<div class="sentiment-label" style="background: ${color}">${data.label.toUpperCase()}</div>
+						<div class="sentiment-label" style="background: ${color}">${turkishLabel.toUpperCase()}</div>
 						<div class="sentiment-score">
 							<div class="score-bar">
-								<div class="score-fill" style="width: ${Math.abs(data.score) * 100}%; background: ${color}"></div>
+								<div class="score-fill" style="width: ${normalizedScore * 100}%; background: ${color}"></div>
 							</div>
-							<span>Skor: ${data.score.toFixed(2)}</span>
+							<span>Skor: ${data.score.toFixed(2)} | Güven: %${(data.confidence * 100).toFixed(0)}</span>
 						</div>
-						${data.details ? `
+						${(data.positiveWords && data.positiveWords.length) || (data.negativeWords && data.negativeWords.length) ? `
 							<div class="sentiment-details">
-								<span class="detail positive">Pozitif: ${data.details.positiveWords || 0}</span>
-								<span class="detail negative">Negatif: ${data.details.negativeWords || 0}</span>
+								${data.positiveWords && data.positiveWords.length ? `<span class="detail positive">Pozitif: ${data.positiveWords.join(', ')}</span>` : ''}
+								${data.negativeWords && data.negativeWords.length ? `<span class="detail negative">Negatif: ${data.negativeWords.join(', ')}</span>` : ''}
 							</div>
 						` : ''}
 					</div>
@@ -583,11 +597,14 @@
 
 			function displayNewsSentiment(data, container) {
 				const { summary, news } = data
-				const total = summary.totalAnalyzed
+				const total = summary.totalAnalyzed || 1
+
+				// Türkçe label al
+				const overallLabelTr = translateLabel(summary.overallLabel)
 
 				container.innerHTML = `
 					<div class="sentiment-summary">
-						<h4>Genel Durum: <span class="sentiment-label-inline ${summary.overallLabel}">${summary.overallLabel.toUpperCase()}</span></h4>
+						<h4>Genel Durum: <span class="sentiment-label-inline ${overallLabelTr}">${overallLabelTr.toUpperCase()}</span></h4>
 						<div class="distribution-bar">
 							<div class="dist-positive" style="width: ${(summary.distribution.positive / total) * 100}%">${summary.distribution.positive}</div>
 							<div class="dist-neutral" style="width: ${(summary.distribution.neutral / total) * 100}%">${summary.distribution.neutral}</div>
@@ -600,15 +617,17 @@
 						</div>
 					</div>
 					<div class="news-sentiment-list">
-						${news.map(n => `
+						${news.map(n => {
+							const labelTr = translateLabel(n.sentiment.label)
+							return `
 							<div class="news-sentiment-item">
 								<div class="news-title">${esc(n.title)}</div>
 								<div class="news-meta">
 									<span>${esc(n.source)}</span>
-									<span class="sentiment-badge ${n.sentiment.label}">${n.sentiment.label}</span>
+									<span class="sentiment-badge ${labelTr}">${labelTr.toUpperCase()}</span>
 								</div>
 							</div>
-						`).join('')}
+						`}).join('')}
 					</div>
 				`
 			}
