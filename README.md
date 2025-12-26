@@ -219,6 +219,5 @@ mcp-news-server/
 - **Natural**: NLP işlemleri için
 - **Node-Cache**: Bellek içi önbellek
 
-## Lisans
+<img width="1920" height="2887" alt="image" src="https://github.com/user-attachments/assets/0d5000ea-94f1-4597-9bea-e2677eb0ba77" />
 
-MIT
